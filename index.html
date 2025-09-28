@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="cs">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evidence pojištěnců</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>Evidence pojištěnců</h1>
+
+        <div id="zprava"></div>
+
+        <h2>Přidat / Upravit pojištěnce</h2>
+        <form id="formular" class="form-grid">
+            <div class="row">
+                <div>
+                    <label for="jmeno">Jméno:</label>
+                    <input type="text" id="jmeno" required minlength="2">
+                </div>
+                <div>
+                    <label for="prijmeni">Příjmení:</label>
+                    <input type="text" id="prijmeni" required minlength="2">
+                </div>
+            </div>
+
+            <div class="row">
+                <div>
+                    <label for="vek">Věk:</label>
+                    <input type="number" id="vek" required min="0" max="120">
+                </div>
+                <div>
+                    <label for="telefon">Telefon:</label>
+                    <input type="text" id="telefon" required pattern="[0-9 ]{9,}">
+                    <small>(alespoň 9 číslic)</small>
+                </div>
+            </div>
+
+            <div class="full-width">
+                <button type="submit" id="odeslatBtn">Přidat</button>
+            </div>
+        </form>
+
+
+        <h2>Seznam pojištěnců</h2>
+        <div id="seznam"></div>
+    </div>
+
+    <footer>
+        © Vytvořil: Matouš Ferstl
+    </footer>
+
+    </div>
+
+    <script src="pojistenec.js" defer></script>
+    <script src="app.js" defer></script>
+</body>
+
+</html>
