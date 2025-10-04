@@ -1,91 +1,103 @@
 "use strict";
 
-// Seznam pojištěnců (uchovává se jen v paměti)
-const pojistenci = [];
-let upravovanyIndex = null; // index pojištěnce, který se momentálně edituje
+// Vytvoření nové "databáze" (správce pojištěnců)
+// - ukládá seznam pojištěnců
+// - zajišťuje přidávání, úpravy a mazání
+const db = new Databaze();   
 
-// Funkce pro zobrazení krátké notifikace uživateli
-// text = obsah zprávy, typ = "success" nebo "error"
+// Uchovává index pojištěnce, který se právě edituje (null = nic se needituje)
+let upravovanyIndex = null;  
+
+// =========================
+// Funkce pro zobrazování zpráv (notifikací)
+// =========================
 function zobrazZpravu(text, typ = "success") {
   const zprava = document.getElementById("zprava");
   zprava.textContent = text;
   zprava.className = typ;
   zprava.style.display = "block";
-
-  // Zpráva zmizí po 3 vteřinách
-  setTimeout(() => {
-    zprava.style.display = "none";
-  }, 3000);
+  // zpráva se po 3 vteřinách automaticky skryje
+  setTimeout(() => zprava.style.display = "none", 3000);
 }
 
-// Přidá nového pojištěnce do seznamu
+// =========================
+// Přidání pojištěnce
+// =========================
 function pridejPojistence(jmeno, prijmeni, vek, telefon) {
   try {
-    const novy = new Pojistenec(jmeno, prijmeni, vek, telefon);
-    pojistenci.push(novy);
-    vykresliSeznam();
-    zobrazZpravu("Pojištěnec byl úspěšně přidán.", "success");
+    db.pridej(jmeno, prijmeni, vek, telefon);
+    vykresliSeznam(); // aktualizace seznamu na stránce
+    zobrazZpravu("Pojištěnec byl úspěšně přidán.");
   } catch (e) {
     zobrazZpravu("Chyba: " + e.message, "error");
   }
 }
 
-// Předvyplní formulář údaji vybraného pojištěnce pro úpravu
+// =========================
+// Úprava existujícího pojištěnce
+// =========================
 function upravPojistence(index) {
-  const p = pojistenci[index];
+  const p = db.getAll()[index];
+
+  // Předvyplnění formuláře daty vybraného pojištěnce
   document.getElementById("jmeno").value = p.jmeno;
   document.getElementById("prijmeni").value = p.prijmeni;
   document.getElementById("vek").value = p.vek;
   document.getElementById("telefon").value = p.telefon;
 
-  upravovanyIndex = index; // uloží se, kdo se edituje
+  // uložíme si, že teď editujeme konkrétního pojištěnce
+  upravovanyIndex = index;
   document.getElementById("odeslatBtn").textContent = "Uložit změny";
 }
 
-// Uloží změny u pojištěnce, který se edituje
+// Uloží změny pojištěnce, který je právě v režimu úpravy
 function ulozUpravy(jmeno, prijmeni, vek, telefon) {
   try {
-    const aktualizovany = new Pojistenec(jmeno, prijmeni, vek, telefon);
-    pojistenci[upravovanyIndex] = aktualizovany;
-    upravovanyIndex = null;
+    db.uprav(upravovanyIndex, jmeno, prijmeni, vek, telefon);
+    upravovanyIndex = null; // po uložení už nic needitujeme
     document.getElementById("odeslatBtn").textContent = "Přidat";
     vykresliSeznam();
-    zobrazZpravu("Údaje pojištěnce byly upraveny.", "success");
+    zobrazZpravu("Údaje pojištěnce byly upraveny.");
   } catch (e) {
     zobrazZpravu("Chyba: " + e.message, "error");
   }
 }
 
-// Smaže pojištěnce podle indexu
+// =========================
+// Smazání pojištěnce
+// =========================
 function smazPojistence(index) {
-  pojistenci.splice(index, 1);
+  db.smaz(index);
   vykresliSeznam();
-  zobrazZpravu("Pojištěnec byl smazán.", "success");
+  zobrazZpravu("Pojištěnec byl smazán.");
 }
 
-// Vykreslí seznam pojištěnců do <div id="seznam">
-// - pokud je prázdný, zobrazí hlášku
-// - jinak vypíše seznam a přidá tlačítka Upravit/Smazat
+// =========================
+// Vykreslení seznamu pojištěnců na stránku
+// =========================
 function vykresliSeznam() {
   const seznamDiv = document.getElementById("seznam");
   seznamDiv.innerHTML = "";
 
+  const pojistenci = db.getAll();
   if (pojistenci.length === 0) {
     seznamDiv.textContent = "Seznam je prázdný.";
     return;
   }
 
   const ul = document.createElement("ul");
+
+  // projdeme všechny pojištěnce a vykreslíme do <li>
   pojistenci.forEach((p, index) => {
     const li = document.createElement("li");
     li.textContent = p.toString() + " ";
 
-    // Tlačítko pro úpravu
+    // tlačítko "Upravit"
     const btnUpravit = document.createElement("button");
     btnUpravit.textContent = "Upravit";
     btnUpravit.addEventListener("click", () => upravPojistence(index));
 
-    // Tlačítko pro smazání
+    // tlačítko "Smazat"
     const btnSmazat = document.createElement("button");
     btnSmazat.textContent = "Smazat";
     btnSmazat.addEventListener("click", () => smazPojistence(index));
@@ -94,16 +106,17 @@ function vykresliSeznam() {
     li.appendChild(btnSmazat);
     ul.appendChild(li);
   });
+
   seznamDiv.appendChild(ul);
 }
 
+// =========================
 // Obsluha odeslání formuláře
-// - načte hodnoty z polí
-// - provede základní validace
-// - podle stavu buď přidá nového pojištěnce, nebo uloží změny
+// =========================
 document.getElementById("formular").addEventListener("submit", function (e) {
   e.preventDefault();
 
+  // Načteme hodnoty z polí formuláře
   const jmeno = document.getElementById("jmeno").value.trim();
   const prijmeni = document.getElementById("prijmeni").value.trim();
   const vek = parseInt(document.getElementById("vek").value);
@@ -111,27 +124,26 @@ document.getElementById("formular").addEventListener("submit", function (e) {
 
   // Validace vstupů
   if (jmeno.length < 2 || prijmeni.length < 2) {
-    zobrazZpravu("Jméno a příjmení musí mít alespoň 2 znaky.", "error");
-    return;
+    return zobrazZpravu("Jméno a příjmení musí mít alespoň 2 znaky.", "error");
   }
   if (isNaN(vek) || vek < 0 || vek > 120) {
-    zobrazZpravu("Věk musí být číslo od 0 do 120.", "error");
-    return;
+    return zobrazZpravu("Věk musí být číslo od 0 do 120.", "error");
   }
   if (telefon.replace(/\s+/g, "").length < 9) {
-    zobrazZpravu("Telefon musí mít alespoň 9 číslic.", "error");
-    return;
+    return zobrazZpravu("Telefon musí mít alespoň 9 číslic.", "error");
   }
 
-  // Rozhodnutí, zda přidat nebo uložit změny
+  // Rozhodnutí: přidat nového nebo uložit změny
   if (upravovanyIndex === null) {
     pridejPojistence(jmeno, prijmeni, vek, telefon);
   } else {
     ulozUpravy(jmeno, prijmeni, vek, telefon);
   }
 
-  this.reset(); // vymazání formuláře
+  // vymazání formuláře
+  this.reset();
 });
 
-// Po načtení stránky se seznam vykreslí (i když je prázdný)
+
+// při načtení stránky rovnou vykreslí seznam
 vykresliSeznam();
